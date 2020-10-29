@@ -12,51 +12,44 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    // if(fork() == 0) {
-    //     exec(argv[1], &argv[1]);
-    //     fprintf(2, "exec %s failed\n", argv[1]);
-    // }
-
     int sig;
-    char *subargv[MAXARG];
-    char argbuf[ARG_MAX_LENGTH];
-    int arg_index = 0, argv_index = 0;
+    char *sub_argv[MAXARG];
+    char arg_buf[ARG_MAX_LENGTH];
+    int buf_index = 0, argv_index = 0;
     int runflag = 0;
 
     for(; argv_index < argc-1; argv_index++) {
-        subargv[argv_index] = malloc(ARG_MAX_LENGTH);
-        memmove(subargv[argv_index], argv[argv_index+1], sizeof(argv[argv_index+1]));
+        sub_argv[argv_index] = malloc(ARG_MAX_LENGTH);
+        memmove(sub_argv[argv_index], argv[argv_index+1], sizeof(argv[argv_index+1]));
     }
 
-    // wait(&sig);
-
-    while(read(0, argbuf + arg_index, sizeof(char)) > 0) {
-            if(argbuf[arg_index] == '\n' || argbuf[arg_index] == ' ') {
-                runflag = (argbuf[arg_index] == '\n') ? 1 : 0;
-                argbuf[arg_index] = 0;
-                if(subargv[argv_index] == 0)
-                    subargv[argv_index] = malloc(ARG_MAX_LENGTH);
+    while(read(0, arg_buf + buf_index, sizeof(char)) > 0) {
+            if(arg_buf[buf_index] == '\n' || arg_buf[buf_index] == ' ') {
+                runflag = (arg_buf[buf_index] == '\n') ? 1 : 0;
+                arg_buf[buf_index] = 0;
+                if(sub_argv[argv_index] == 0)
+                    sub_argv[argv_index] = malloc(ARG_MAX_LENGTH);
                 else
-                    memset(subargv[argv_index], 0, ARG_MAX_LENGTH);
-                memmove(subargv[argv_index], argbuf, arg_index);
+                    memset(sub_argv[argv_index], 0, ARG_MAX_LENGTH);
+                memmove(sub_argv[argv_index], arg_buf, buf_index);
                 argv_index++;
-                arg_index = 0;
-            }else if(arg_index == ARG_MAX_LENGTH) continue;
+                buf_index = 0;
+            }else if(buf_index == ARG_MAX_LENGTH) continue;
             else {
-                arg_index++;
+                buf_index++;
             }
             
             if(runflag) {
-                while(subargv[argv_index] != 0){
-                    memset(subargv[argv_index++], 0, ARG_MAX_LENGTH);
+                while(sub_argv[argv_index] != 0){
+                    memset(sub_argv[argv_index++], 0, ARG_MAX_LENGTH);
                 }
                 if(fork() == 0) {
-                    exec(subargv[0], subargv);
-                    fprintf(2, "exec %s failed\n", subargv[0]);
+                    exec(sub_argv[0], sub_argv);
+                    fprintf(2, "exec %s failed\n", sub_argv[0]);
                 }else {
                     wait(&sig);
                     runflag = 0;
-                    arg_index = 0;
+                    buf_index = 0;
                     argv_index = argc - 1;
                 }
             }
