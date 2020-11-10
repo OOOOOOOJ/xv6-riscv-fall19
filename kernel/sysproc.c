@@ -38,19 +38,42 @@ sys_wait(void)
   return wait(p);
 }
 
-uint64
-sys_sbrk(void)
-{
-  int addr;
-  int n;
+// uint64
+// sys_sbrk(void)
+// {
+//   int addr;
+//   int n;
 
+//   if(argint(0, &n) < 0)
+//     return -1;
+//   addr = myproc()->sz;
+//   if(growproc(n) < 0)
+//     return -1;
+//   return addr;
+// }
+
+
+uint64 sys_sbrk(void)
+{
+  volatile int addr;    //????
+  int n;
+  struct proc *p = myproc();
+  
   if(argint(0, &n) < 0)
     return -1;
-  addr = myproc()->sz;
-  if(growproc(n) < 0)
-    return -1;
+  
+  addr = p->sz;
+  // printf("newad %d oldad %d\n", p->sz, addr);
+
+  if(n < 0){
+    uvmdealloc(p->pagetable, addr, addr + n);
+  }
+
+  p->sz += n;
+
   return addr;
 }
+
 
 uint64
 sys_sleep(void)
