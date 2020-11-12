@@ -67,6 +67,40 @@ usertrap(void)
     syscall();
   } else if((which_dev = devintr()) != 0){
     // ok
+  } else if(r_scause() == 15 || r_scause() == 13){
+    // printf("usertrap(): page fault\n");
+    uint64 fault_addr = r_stval();
+    uint64 vpage_addr = PGROUNDDOWN(fault_addr);
+
+    uint64 *pte = walk(p->pagetable, vpage_addr, 0);
+    if(*pte == 0){
+      printf("usertrap(): no physical page found\n");
+      p->killed = 1;
+      exit(-1);
+    }
+
+    if((*pte & PTE_COW) == PTE_COW){
+      char *mem = kalloc();
+      if(mem == 0){
+        p->killed = 1;
+        printf("usertrap(): alloc memory failed\n");
+        exit(-1);
+      }
+      uint64 pa = PTE2PA(*pte);
+      uint flag = (PTE_FLAGS(*pte) | PTE_W) & (~PTE_COW);
+      memmove(mem, (char*)pa, PGSIZE);
+      uvmunmap(p->pagetable, vpage_addr, PGSIZE, 0);
+      kderef((void*)pa);
+      if(mappages(p->pagetable, vpage_addr, PGSIZE, (uint64)mem, flag) != 0){
+        // uvmunmap(p->pagetable, (uint64)mem, PGSIZE, 0);
+        kfree(mem);
+        p->killed = 1;
+        panic("usertrap(): cannot mapping\n");
+      }
+    } else {
+      panic("usertrap(): unknown\n");
+    }
+    // printf("usertrap(): page fault already\n");
   } else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
