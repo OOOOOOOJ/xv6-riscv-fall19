@@ -113,8 +113,7 @@ kalloc(void)
   // printf("kalloc\n");
   acquire(&kmem.lock);
   r = kmem.freelist;
-  if(r == 0)
-    panic("no memory\n");
+
   if(r)
     kmem.freelist = r->next;
   release(&kmem.lock);

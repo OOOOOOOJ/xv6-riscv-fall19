@@ -78,7 +78,7 @@ usertrap(void)
       exit(-1);
     }
 
-    if((*pte & PTE_COW) == PTE_COW){
+    if((*pte & PTE_COW) || (*pte & PTE_W) == 0){
       char *mem = kalloc();
       if(mem == 0){
         p->killed = 1;

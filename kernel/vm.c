@@ -257,7 +257,6 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz)
     mem = kalloc();
     if(mem == 0){
       uvmdealloc(pagetable, a, oldsz);
-      printf("bad alloc\n");
       return 0;
     }
     memset(mem, 0, PGSIZE);
@@ -333,14 +332,16 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
 
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walk(old, i, 0)) == 0)
-      panic("uvmcopy: pte should exist");
+      continue;
+      // panic("uvmcopy: pte should exist");
     if((*pte & PTE_V) == 0)
-      panic("uvmcopy: page not present");
+      continue;
+      // panic("uvmcopy: page not present");
+    *pte &= (~PTE_W);
     pa = PTE2PA(*pte);
-    flags = (PTE_FLAGS(*pte) | PTE_COW) & (~PTE_W);
+    flags = (PTE_FLAGS(*pte) | PTE_COW);
     kref((void*)pa);
     if(mappages(new, i, PGSIZE, (uint64)pa, flags) != 0){
-      kderef((void*)pa);
       goto err;
     }
     // if((mem = kalloc()) == 0)
@@ -383,18 +384,21 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 
   while(len > 0){
     va0 = PGROUNDDOWN(dstva);
+    if(va0 >= MAXVA)
+      return -1;
     pte = walk(pagetable, va0, 0);
     if(pte == 0 || (*pte & PTE_V) == 0 || (*pte & PTE_U) == 0){
       printf("copyout: pte not exist or not accessible\n");
       return -1;
     }
-    if((*pte & PTE_COW) == PTE_COW){
+    pa0 = walkaddr(pagetable, va0);
+    if((*pte & PTE_COW) || (*pte & PTE_W) == 0){
       mem = kalloc();
       if(mem == 0){
         printf("out of memory\n");
         return -1;
       }
-      // memmove(mem, (char*)pa0, PGSIZE);
+      memmove(mem, (char*)pa0, PGSIZE);
       uint flag = (PTE_FLAGS(*pte) | PTE_W) & (~PTE_COW);
       uvmunmap(pagetable, va0, PGSIZE, 1);
       if(mappages(pagetable, va0, PGSIZE, (uint64)mem, flag) != 0){
@@ -402,17 +406,15 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
         printf("bad mapping\n");
         return -1;
       }
+      pa0 = PTE2PA(*pte);
     }
-    pa0 = walkaddr(pagetable, va0);
-    // printf("pa0: %p\n", pa0);
+
     if(pa0 == 0)
       return -1;
     n = PGSIZE - (dstva - va0);
     if(n > len)
       n = len;
     memmove((void *)(pa0 + (dstva - va0)), src, n);
-    // printf("data: %s", src);
-    // printf("data copy: %s", (void *)pa0 + (dstva - va0));
 
     len -= n;
     src += n;

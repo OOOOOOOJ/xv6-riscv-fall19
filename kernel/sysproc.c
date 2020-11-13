@@ -52,7 +52,6 @@ sys_sbrk(void)
     // return -1;
   addr = myproc()->sz;
   if(growproc(n) < 0){
-    printf("bad grow\n");
     return -1;
   }
     // return -1;
