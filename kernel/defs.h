@@ -64,6 +64,7 @@ void            kfree(void *);
 void            kinit();
 uint            kref(void *);
 uint            kderef(void *);
+uint            kgetref(void *);
 
 // log.c
 void            initlog(int, struct superblock*);

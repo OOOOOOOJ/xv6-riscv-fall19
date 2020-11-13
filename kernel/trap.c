@@ -71,7 +71,7 @@ usertrap(void)
     uint64 fault_addr = r_stval();
     uint64 vpage_addr = PGROUNDDOWN(fault_addr);
 
-    uint64 *pte = walk(p->pagetable, vpage_addr, 0);
+    pte_t *pte = walk(p->pagetable, vpage_addr, 0);
     if(*pte == 0){
       printf("usertrap(): no physical page found\n");
       p->killed = 1;
@@ -88,8 +88,7 @@ usertrap(void)
       uint64 pa = PTE2PA(*pte);
       uint flag = (PTE_FLAGS(*pte) | PTE_W) & (~PTE_COW);
       memmove(mem, (char*)pa, PGSIZE);
-      uvmunmap(p->pagetable, vpage_addr, PGSIZE, 0);
-      kderef((void*)pa);
+      uvmunmap(p->pagetable, vpage_addr, PGSIZE, 1);
       if(mappages(p->pagetable, vpage_addr, PGSIZE, (uint64)mem, flag) != 0){
         // uvmunmap(p->pagetable, (uint64)mem, PGSIZE, 0);
         kfree(mem);

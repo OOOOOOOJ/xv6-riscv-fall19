@@ -18,6 +18,7 @@ simpletest()
   printf("simple: ");
   
   char *p = sbrk(sz);
+
   if(p == (char*)0xffffffffffffffffL){
     printf("sbrk(%d) failed\n", sz);
     exit(-1);

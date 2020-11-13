@@ -43,12 +43,19 @@ sys_sbrk(void)
 {
   int addr;
   int n;
+  
 
-  if(argint(0, &n) < 0)
+  if(argint(0, &n) < 0){
+    printf("bad arg\n");
     return -1;
+  }
+    // return -1;
   addr = myproc()->sz;
-  if(growproc(n) < 0)
+  if(growproc(n) < 0){
+    printf("bad grow\n");
     return -1;
+  }
+    // return -1;
   return addr;
 }
 

@@ -171,6 +171,7 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
     a += PGSIZE;
     pa += PGSIZE;
   }
+  
   return 0;
 }
 
@@ -197,7 +198,11 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 size, int do_free)
       panic("uvmunmap: not a leaf");
     if(do_free){
       pa = PTE2PA(*pte);
-      kfree((void*)pa);
+      uint ref = kderef((void*)pa);
+      if(ref == 0){
+        kfree((void*)pa);
+      }
+        // kfree((void*)pa);
     }
     *pte = 0;
     if(a == last)
@@ -252,12 +257,14 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz)
     mem = kalloc();
     if(mem == 0){
       uvmdealloc(pagetable, a, oldsz);
+      printf("bad alloc\n");
       return 0;
     }
     memset(mem, 0, PGSIZE);
     if(mappages(pagetable, a, PGSIZE, (uint64)mem, PTE_W|PTE_X|PTE_R|PTE_U) != 0){
       kfree(mem);
       uvmdealloc(pagetable, a, oldsz);
+      printf("bad map\n");
       return 0;
     }
   }
@@ -333,7 +340,6 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     flags = (PTE_FLAGS(*pte) | PTE_COW) & (~PTE_W);
     kref((void*)pa);
     if(mappages(new, i, PGSIZE, (uint64)pa, flags) != 0){
-      // uvmunmap(new, (uint64)pa, PGSIZE, 0);
       kderef((void*)pa);
       goto err;
     }
@@ -372,17 +378,41 @@ int
 copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 {
   uint64 n, va0, pa0;
+  pte_t *pte;
+  char *mem;
 
   while(len > 0){
     va0 = PGROUNDDOWN(dstva);
-
-    // pa0 = walkaddr(pagetable, va0);
+    pte = walk(pagetable, va0, 0);
+    if(pte == 0 || (*pte & PTE_V) == 0 || (*pte & PTE_U) == 0){
+      printf("copyout: pte not exist or not accessible\n");
+      return -1;
+    }
+    if((*pte & PTE_COW) == PTE_COW){
+      mem = kalloc();
+      if(mem == 0){
+        printf("out of memory\n");
+        return -1;
+      }
+      // memmove(mem, (char*)pa0, PGSIZE);
+      uint flag = (PTE_FLAGS(*pte) | PTE_W) & (~PTE_COW);
+      uvmunmap(pagetable, va0, PGSIZE, 1);
+      if(mappages(pagetable, va0, PGSIZE, (uint64)mem, flag) != 0){
+        kfree(mem);
+        printf("bad mapping\n");
+        return -1;
+      }
+    }
+    pa0 = walkaddr(pagetable, va0);
+    // printf("pa0: %p\n", pa0);
     if(pa0 == 0)
       return -1;
     n = PGSIZE - (dstva - va0);
     if(n > len)
       n = len;
     memmove((void *)(pa0 + (dstva - va0)), src, n);
+    // printf("data: %s", src);
+    // printf("data copy: %s", (void *)pa0 + (dstva - va0));
 
     len -= n;
     src += n;
@@ -402,6 +432,7 @@ copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
   while(len > 0){
     va0 = PGROUNDDOWN(srcva);
     pa0 = walkaddr(pagetable, va0);
+
     if(pa0 == 0)
       return -1;
     n = PGSIZE - (srcva - va0);
