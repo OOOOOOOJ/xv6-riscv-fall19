@@ -55,7 +55,8 @@ sys_wait(void)
 
 uint64 sys_sbrk(void)
 {
-  volatile int addr;    //????
+  volatile int addr;
+  // int addr;
   int n;
   struct proc *p = myproc();
   
