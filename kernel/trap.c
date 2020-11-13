@@ -68,7 +68,6 @@ usertrap(void)
   } else if((which_dev = devintr()) != 0){
     // ok
   } else if(r_scause() == 15){
-    // printf("usertrap(): page fault\n");
     uint64 fault_addr = r_stval();
     uint64 vpage_addr = PGROUNDDOWN(fault_addr);
 
@@ -100,7 +99,6 @@ usertrap(void)
     } else {
       panic("usertrap(): unknown\n");
     }
-    // printf("usertrap(): page fault already\n");
   } else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());

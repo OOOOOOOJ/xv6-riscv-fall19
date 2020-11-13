@@ -324,8 +324,6 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   uint flags;
   // char *mem;
 
-  // printf("uvmcopy\n");
-
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walk(old, i, 0)) == 0)
       panic("uvmcopy: pte should exist");
@@ -347,7 +345,6 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     //   goto err;
     // }
   }
-  // printf("uvmcopy already\n");
   return 0;
 
  err:
@@ -378,7 +375,8 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 
   while(len > 0){
     va0 = PGROUNDDOWN(dstva);
-    pa0 = walkaddr(pagetable, va0);
+
+    // pa0 = walkaddr(pagetable, va0);
     if(pa0 == 0)
       return -1;
     n = PGSIZE - (dstva - va0);
