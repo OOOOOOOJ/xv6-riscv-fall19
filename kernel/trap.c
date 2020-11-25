@@ -77,8 +77,20 @@ usertrap(void)
     exit(-1);
 
   // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2)
+  if(which_dev == 2 && p->interval != 0){
+    p->tick++;
+    if(p->tick == p->interval){
+      p->tick = 0;
+      if((p->oldtf = (struct trapframe *)kalloc()) == 0)
+        panic("out of memery");
+      
+      memmove(p->oldtf, p->tf, sizeof(struct trapframe));
+      p->tf->epc = (uint64) p->alarmhandle;
+      yield();
+    }
+  } else if(which_dev == 2){
     yield();
+  }
 
   usertrapret();
 }

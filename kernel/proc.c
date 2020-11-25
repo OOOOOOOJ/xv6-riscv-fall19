@@ -123,6 +123,9 @@ found:
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
 
+  p->tick = 0;
+  p->interval = 0;
+
   return p;
 }
 
@@ -134,7 +137,10 @@ freeproc(struct proc *p)
 {
   if(p->tf)
     kfree((void*)p->tf);
+  if(p->oldtf)
+    kfree((void*)p->oldtf);
   p->tf = 0;
+  p->oldtf = 0;
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
   p->pagetable = 0;
@@ -146,6 +152,8 @@ freeproc(struct proc *p)
   p->killed = 0;
   p->xstate = 0;
   p->state = UNUSED;
+  p->interval = 0;
+  p->tick = 0;
 }
 
 // Create a page table for a given process,
